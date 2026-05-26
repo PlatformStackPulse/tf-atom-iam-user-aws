@@ -1,7 +1,15 @@
-# -----------------------------------------------------------------------------
-# Module-Specific Variables
-#
-# Note: Standard labeling variables (enabled, namespace, tenant, environment,
-# stage, name, delimiter, attributes, tags, label_order, etc.) are provided
-# by context.tf via the tf-label module.
-# -----------------------------------------------------------------------------
+variable "path" {
+  description = "Path for the IAM user"
+  type        = string
+  default     = "/"
+  validation {
+    condition     = can(regex("^/", var.path))
+    error_message = "path must start with /."
+  }
+}
+
+variable "force_destroy" {
+  description = "Destroy user even if it has non-Terraform-managed access keys, login profile, or MFA devices"
+  type        = bool
+  default     = false
+}
