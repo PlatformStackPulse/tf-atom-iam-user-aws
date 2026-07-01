@@ -1,30 +1,28 @@
-# Terraform Module Template
+# tf-atom-iam-user-aws
 
-<!-- Badges: Update REPO_OWNER/REPO_NAME after creating from template -->
-[![CI](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
-[![Release](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/auto-release.yml/badge.svg)](../../actions/workflows/auto-release.yml)
-[![CodeQL](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
-[![Changelog](https://github.com/PlatformStackPulse/terraform-atom-molecule-module-template/actions/workflows/changelog.yml/badge.svg)](../../actions/workflows/changelog.yml)
-![Latest Release](https://img.shields.io/github/v/release/PlatformStackPulse/terraform-atom-molecule-module-template?label=latest%20release&sort=semver)
-![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.6.0-blue?logo=terraform)
-![License](https://img.shields.io/github/license/PlatformStackPulse/terraform-atom-molecule-module-template)
+> Atom module for provisioning a single AWS IAM user with consistent, `tf-label`-generated naming and tagging.
 
-A production-ready template for creating Terraform modules following the **one module per repository** best practice, with built-in CI/CD, security scanning, testing, documentation generation, and publishing to public registries.
+[![CI](https://github.com/PlatformStackPulse/tf-atom-iam-user-aws/actions/workflows/ci.yml/badge.svg)](../../actions/workflows/ci.yml)
+[![Release](https://github.com/PlatformStackPulse/tf-atom-iam-user-aws/actions/workflows/auto-release.yml/badge.svg)](../../actions/workflows/auto-release.yml)
+[![CodeQL](https://github.com/PlatformStackPulse/tf-atom-iam-user-aws/actions/workflows/codeql.yml/badge.svg)](../../actions/workflows/codeql.yml)
+[![Changelog](https://github.com/PlatformStackPulse/tf-atom-iam-user-aws/actions/workflows/changelog.yml/badge.svg)](../../actions/workflows/changelog.yml)
+![Latest Release](https://img.shields.io/github/v/release/PlatformStackPulse/tf-atom-iam-user-aws?label=latest%20release&sort=semver)
+![Terraform](https://img.shields.io/badge/terraform-%3E%3D1.11.3-blue?logo=terraform)
+![License](https://img.shields.io/github/license/PlatformStackPulse/tf-atom-iam-user-aws)
+
+An **atom** in the PlatformStackPulse atom → molecule → cell hierarchy. It owns the smallest useful unit — one AWS IAM user — and delegates all naming and tagging to the shared [`tf-label`](https://github.com/PlatformStackPulse/tf-label) module so identifiers stay consistent across the whole platform.
 
 ## Features
 
-- **One Module Per Repo** — Module lives at the root; no nested `modules/` directory
-- **Registry Publishing** — Auto-publish to Terraform Registry, Artifactory, or GitLab on release
-- **Native Terraform Testing** — `terraform test` with mock providers (no external tools)
-- **Security Scanning** — Trivy IaC scanning for HIGH/CRITICAL vulnerabilities
-- **Linting** — TFLint with AWS ruleset (preset "all")
-- **Auto Documentation** — terraform-docs generates README sections on every commit
-- **GitHub Actions CI/CD** — Workflows for the full module lifecycle
-- **Auto Release** — CI passes on main → auto-tag → GitHub Release created
-- **Pre-Commit Hooks** — Format, validate, lint, docs, and security on every commit
-- **Conventional Commits** — Enforced commit message format
-- **Semantic Versioning** — Automated version management and releases
-- **DevContainer** — VS Code remote development ready
+- **tf-label naming & tagging** — Derives a deterministic `id` (e.g. `eg-test-thing`) and standard tag set from the `namespace`/`environment`/`stage`/`name` label elements via `module.this`.
+- **`enabled` toggle** — Setting `enabled = false` short-circuits the module so it creates nothing, enabling clean conditional composition inside molecules and cells.
+- **Context passthrough** — Accepts a full `context` object (or individual label inputs), so it composes cleanly with other atoms sharing the same label context.
+- **Native Terraform testing** — `terraform test` unit suite with a mock AWS provider; no external test tooling required.
+- **Security scanning** — Trivy IaC scanning for HIGH/CRITICAL findings.
+- **Linting** — TFLint with the AWS ruleset (preset "all").
+- **Auto documentation** — terraform-docs regenerates the `BEGIN_TF_DOCS` section on every commit.
+- **GitHub Actions CI/CD** — Format, validate, lint, test, security, and auto-release workflows.
+- **Conventional commits + semantic versioning** — Automated tagging and releases from `main`.
 
 ## CI Pipeline
 
@@ -77,38 +75,31 @@ See [TEMPLATE_GUIDE.md](TEMPLATE_GUIDE.md) for detailed instructions.
 
 ## Usage
 
-### From GitHub
-
 ```hcl
-module "this" {
-  source = "github.com/PlatformStackPulse/terraform-aws-my-module?ref=v1.0.0"
+module "iam_user" {
+  source = "git::https://github.com/PlatformStackPulse/tf-atom-iam-user-aws.git?ref=v1.0.0"
 
-  name        = "my-resource"
-  environment = "dev"
-  namespace   = "myorg"
+  # tf-label ID elements — drive the generated name/id and tags.
+  namespace   = "eg"
+  environment = "ue1"
+  stage       = "prod"
+  name        = "ci-deployer"
 
   tags = {
-    Project = "example"
+    Project = "platform"
     Owner   = "platform-engineering"
   }
 }
 ```
 
-### From Terraform Registry
+Disable the module (creates nothing) by passing `enabled = false`, or supply a shared
+label context from another atom via the `context` input:
 
 ```hcl
-module "this" {
-  source  = "PlatformStackPulse/my-module/aws"
-  version = "~> 1.0"
-
-  name        = "my-resource"
-  environment = "dev"
-  namespace   = "myorg"
-
-  tags = {
-    Project = "example"
-    Owner   = "platform-engineering"
-  }
+module "iam_user" {
+  source  = "git::https://github.com/PlatformStackPulse/tf-atom-iam-user-aws.git?ref=v1.0.0"
+  context = module.label.context
+  name    = "ci-deployer"
 }
 ```
 
@@ -312,6 +303,30 @@ No resources.
 |------|-------------|
 | <a name="output_enabled"></a> [enabled](#output\_enabled) | Whether the module is enabled. |
 <!-- END_TF_DOCS -->
+
+## Tests
+
+Native `terraform test` unit tests live in [`tests/unit/`](tests/unit/) and run against a
+**mock AWS provider** — no real AWS calls or credentials are required. Assertions target
+plan-known values (label pass-throughs and the `enabled` flag), so they remain stable even
+though computed ARNs/IDs are unknown under the mock provider.
+
+```bash
+# Unit tests (mock provider, no AWS)
+terraform init -backend=false
+terraform test -test-directory=tests/unit
+
+# or via the Makefile
+make test-unit
+```
+
+Integration tests in [`tests/integration/`](tests/integration/) exercise real AWS and are
+run with `terraform test -test-directory=tests/integration` (or `make test-integration`).
+
+| Suite | Location | Provider | Command |
+|-------|----------|----------|---------|
+| Unit | `tests/unit/` | Mock | `terraform test -test-directory=tests/unit` |
+| Integration | `tests/integration/` | Real AWS | `terraform test -test-directory=tests/integration` |
 
 ## Learning Materials
 
